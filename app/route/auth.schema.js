@@ -20,7 +20,8 @@ const facebookRegisterOutputSchema = Joi.object().keys({
     first_name: Joi.string().required(),
     last_name: Joi.string().required(),
     pseudo: Joi.string().required(),
-    email: Joi.string().required()
+    email: Joi.string().required(),
+    picture_url: Joi.string()
 });
 
 module.exports = {

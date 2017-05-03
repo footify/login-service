@@ -60,7 +60,8 @@ function facebookRegister(req, res, next) {
                                 userInformation.email,
                                 input.value.pseudo,
                                 userInformation.first_name,
-                                userInformation.last_name)
+                                userInformation.last_name,
+                                userInformation.picture.data.url)
                                 .then((user) => {
                                     if (!user) {
                                         throw new Error('Unable to create user');
