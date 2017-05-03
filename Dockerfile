@@ -3,11 +3,7 @@ FROM node:6.9.4-alpine
 # for npm native dependencies build:
 RUN apk add --no-cache make gcc g++ git
 
-ENV NODE_ENV=production \
-    API_PORT=3000 \
-    DB_HOST=localhost \
-    DB_PORT=27017 \
-    DB_NAME=footify
+ENV NODE_ENV=production
 
 WORKDIR /src
 
