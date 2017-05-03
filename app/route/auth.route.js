@@ -65,7 +65,14 @@ function facebookRegister(req, res, next) {
                                     if (!user) {
                                         throw new Error('Unable to create user');
                                     }
-                                    httpHelper.sendReply(res, 201, user.toObject(), schemas.facebookRegisterOutputSchema);
+                                    const algoliaObj = {
+                                        name: '@' + user.pseudo,
+                                        type: 'user',
+                                        id: user._id
+                                    };
+                                    return httpHelper.algoliaHelper.addObjToIndex(['global', 'users'], algoliaObj).then(() => {
+                                            httpHelper.sendReply(res, 201, user.toObject(), schemas.facebookRegisterOutputSchema);
+                                    });
                                 });
                         });
                 });
