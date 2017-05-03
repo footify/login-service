@@ -6,6 +6,7 @@ const dbPort = process.env['DB_PORT'] || 27017;
 const dbName = process.env['DB_NAME'] || 'footify';
 
 function connectToDb() {
+    mongoose.Promise = require('bluebird');
     const connectionStr = `mongodb://${dbHost}:${dbPort}/${dbName}`;
 
     return new Promise((resolve, reject) => {

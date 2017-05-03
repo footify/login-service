@@ -19,7 +19,9 @@
   "dependencies": {
     "@footify/data-api": "git+https://github.com/footify/data-api.git",
     "@footify/http-helper": "git+https://github.com/footify/http-helper.git",
+    "bluebird": "^3.5.0",
     "body-parser": "^1.17.1",
+    "boom": "^4.3.1",
     "dotenv": "^4.0.0",
     "express": "^4.15.2",
     "gulp": "^3.9.1",

@@ -1,4 +1,4 @@
-const Joi = require('joi');
+const boom = require('boom');
 const httpHelper = require('@footify/http-helper');
 const dataApi = require('@footify/data-api');
 const schemas = require('./auth.schema');
@@ -6,87 +6,73 @@ const facebookApi = require('../external-service/facebook-api');
 
 
 function registerRoute(router) {
-    router.post('/auth/facebook-connect', facebookConnect);
-    router.post('/auth/facebook-register', facebookRegister);
+    router.post('/auth/facebook-connect', httpHelper.generateRoute(facebookConnect));
+    router.post('/auth/facebook-register', httpHelper.generateRoute(facebookRegister));
 }
 
 function facebookConnect(req, res, next) {
-    const validation = dataApi.utils.validateModel(req.body, schemas.facebookConnectSchema);
-    if (validation.error) {
-        const error = httpHelper.errors.invalidRequest;
-        res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-    } else {
-        const input = dataApi.utils.toCamelCase(validation.model);
-        facebookApi.getUserInformation(input.access_token)
-            .then((userInformation) => {
-                if (userInformation === 1) {
-                    const error = httpHelper.errors.invalidFacebookToken;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else if (userInformation === 2) {
-                    const error = httpHelper.errors.invalidFacebookToken;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else {
-                    return dataApi.userModel.getByFacebookEmail(result.id, result.facebookId);
-                }
-            }).then((user) => {
-                if (!user) {
-                    const error = httpHelper.errors.userNotFound;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else {
-                    return generateToken(req.user, user);
-                }
-            }).then((authModel) => {
-                res.status(200);
-                res.json(httpHelper.utils.formatOutput(authModel, dataApi.authSchema));
-                next();
-            });
+    const input = httpHelper.utils.getInput(req.body, schemas.facebookConnectInputSchema);
+    if (input.error) {
+        throw boom.badRequest('Invalid request', input.error);
     }
+    return facebookApi.getUserInformation(input.value.accessToken, 'me')
+        .then((userInformation) => {
+            if (userInformation === 1 || userInformation === 2) {
+                throw boom.badRequest('Invalid facebook token');
+            }
+            return dataApi.userRepository.getByFacebookEmail(userInformation.id, userInformation.email)
+                .then((user) => {
+                    if (!user) {
+                        throw boom.notFound('User not found');
+                    } else {
+                        return generateToken(req.user, user)
+                            .then((token) => {
+                                httpHelper.sendReply(res, 200, token, schemas.facebookConnectOutputSchema);
+                            });
+                    }
+                });
+        }).catch((e) => {
+            httpHelper.handleError(res, e);
+        });
 }
 
 function facebookRegister(req, res, next) {
-    const validation = dataApi.utils.validateModel(req.body, schemas.facebookRegisterSchema);
-    if (validation.error) {
-        const error = httpHelper.errors.invalidRequest;
-        res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-    } else {
-        const input = validation.model;
-        facebookApi.getUserInformation(input.accessToken)
-            .then((userInformation) => {
-                if (userInformation === 1) {
-                    const error = httpHelper.errors.invalidFacebookToken;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else if (userInformation === 2) {
-                    const error = httpHelper.errors.invalidFacebookToken;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else {
-                    return dataApi.userModel.getByFacebookEmail(result.id, result.email);
-                }
-            }).then((user) => {
-                if (user) {
-                    const error = httpHelper.errors.userExist;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else {
-                    return dataApi.userModel.getByPseudo(input.pseudo);
-                }
-            }).then((user) => {
-                if (user) {
-                    const error = httpHelper.errors.pseudoExist;
-                    res.status(error.httpCode).json(httpHelper.utils.toSnakeCase(error.error));
-                } else {
-                    return dataApi.userRepository.create(result.id,
-                        result.email,
-                        input.pseudo,
-                        result.first_name,
-                        result.last_name);
-                }
-            }).then((user) => {
-                if (!user) {
-                    throw new Error('Unable to create user');
-                }
-                res.status(201);
-                res.json(httpHelper.utils.formatOutput(user, dataApi.userSchema));
-        });
+    const input = httpHelper.utils.getInput(req.body, schemas.facebookRegisterInputSchema);
+    if (input.error) {
+        throw boom.badRequest('Invalid request', input.error);
     }
+    return facebookApi.getUserInformation(input.value.accessToken, 'me')
+        .then((userInformation) => {
+            if (userInformation === 1 || userInformation === 2) {
+                throw boom.badRequest('Invalid facebook token');
+            }
+            return dataApi.userRepository.getByFacebookEmail(userInformation.id, userInformation.email)
+                .then((user) => {
+                    if (user) {
+                        throw boom.forbidden('User exists (email address already in use)');
+                    }
+                    return dataApi.userRepository.getByPseudo(input.value.pseudo)
+                        .then((user) => {
+                            if (user) {
+                                throw boom.conflict('User exists (pseudo already in use)');
+                            }
+                            return dataApi.userRepository.create(userInformation.id,
+                                userInformation.email,
+                                input.value.pseudo,
+                                userInformation.first_name,
+                                userInformation.last_name)
+                                .then((user) => {
+                                    if (!user) {
+                                        throw new Error('Unable to create user');
+                                    }
+                                    httpHelper.sendReply(res, 201, user.toObject(), schemas.facebookRegisterOutputSchema);
+                                });
+                        });
+                });
+        })
+        .catch((e) => {
+            httpHelper.handleError(res, e);
+        });
 }
 
 function generateToken(client, user) {
@@ -97,15 +83,15 @@ function generateToken(client, user) {
                 throw new Error('Unable to create access token');
             }
             return dataApi.refreshTokenRepository.create(client, user)
-                .then((refreshToken) => {
-                    if (!refreshToken) {
+                .then((cRefreshToken) => {
+                    if (!cRefreshToken) {
                         throw new Error('Unable to create refresh token');
                     }
                     return {
-                        access_token: cAccessToken.token,
-                        refresh_token: cRefreshToken.token,
+                        accessToken: cAccessToken.token,
+                        refreshToken: cRefreshToken.token,
                         type: 'Bearer',
-                        expires_in: dataApi.accessTokenRepository.duration
+                        expiresIn: dataApi.accessTokenRepository.duration
                     };
                 });
         });

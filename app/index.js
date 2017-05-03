@@ -30,7 +30,7 @@ function app() {
         logger.error(err);
         const httpError = httpHelper.errors.internalServerError;
         const body = httpHelper.utils.validateModel(httpError.error, httpHelper.errorSchema);
-        res.status(httpError.httpCode).json(body.value);
+        //res.status(httpError.httpCode).json(body.value);
     });
 
     return app;

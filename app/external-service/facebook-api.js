@@ -3,7 +3,7 @@ const queryString = require('querystring');
 
 function getUserInformation(token, userId) {
     return new Promise((resolve) => {
-        const url = `https://graph.facebook.com/v2.9/'${userId}'?'${queryString.stringify({
+        const url = `https://graph.facebook.com/v2.9/${userId}?${queryString.stringify({
             fields: 'first_name,last_name,email,id,picture.height(100)',
             access_token: token
         })}`;
