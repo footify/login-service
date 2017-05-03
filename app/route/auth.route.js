@@ -56,12 +56,13 @@ function facebookRegister(req, res, next) {
                             if (user) {
                                 throw boom.conflict('User exists (pseudo already in use)');
                             }
-                            return dataApi.userRepository.create(userInformation.id,
-                                userInformation.email,
-                                input.value.pseudo,
-                                userInformation.first_name,
-                                userInformation.last_name,
-                                userInformation.picture.data.url)
+                            return dataApi.userRepository.create({
+                                facebookId: userInformation.id,
+                                email: userInformation.email,
+                                pseudo: input.value.pseudo,
+                                firstName: userInformation.first_name,
+                                lastName: userInformation.last_name,
+                                pictureUrl: userInformation.picture.data.url})
                                 .then((user) => {
                                     if (!user) {
                                         throw new Error('Unable to create user');
