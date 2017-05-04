@@ -72,8 +72,11 @@ function facebookRegister(req, res, next) {
                                         type: 'user',
                                         id: user._id
                                     };
-                                    return httpHelper.algoliaHelper.addObjToIndex(['global', 'users'], algoliaObj).then(() => {
-                                            httpHelper.sendReply(res, 201, user.toObject(), schemas.facebookRegisterOutputSchema);
+                                    return httpHelper.algoliaHelper.addObjToIndex(['global', 'users'], algoliaObj)
+                                        .then(() => {
+                                            return dataApi.friendListRepository.create(user._id).then(() => {
+                                                httpHelper.sendReply(res, 201, user.toObject(), schemas.facebookRegisterOutputSchema);
+                                            });
                                     });
                                 });
                         });
